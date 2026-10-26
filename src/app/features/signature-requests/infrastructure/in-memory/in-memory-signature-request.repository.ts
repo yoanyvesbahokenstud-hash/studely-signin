@@ -12,7 +12,11 @@ import {
   SignerInput,
 } from '../../domain/signature-request';
 import { SignatureRequestRepository } from '../../domain/signature-request.repository';
-import { submissionBlockers } from '../../domain/signature-request.rules';
+import {
+  canBeArchived,
+  canBeCancelled,
+  submissionBlockers,
+} from '../../domain/signature-request.rules';
 import { SIGNATURE_REQUEST_FIXTURES } from './signature-request.fixtures';
 import { mockPdf } from '@core/mocks/mock-pdf';
 
@@ -48,6 +52,18 @@ const ERRORS = {
     'SignatureRequest: every document must have at least one signature field',
   ],
   requestNotFound: ['400_460', 'SignatureRequest: signature request not found'],
+  alreadyArchived: [
+    '400_406',
+    'SignatureRequest: cannot archive a signature request that is already archived',
+  ],
+  notArchived: [
+    '400_407',
+    'SignatureRequest: cannot unarchive a signature request that is not archived',
+  ],
+  notArchivable: [
+    '400_408',
+    'SignatureRequest: current state is not archivable (draft, signed, cancelled or expired required)',
+  ],
 } as const;
 
 type ErrorKey = keyof typeof ERRORS;
@@ -155,7 +171,6 @@ export class InMemorySignatureRequestRepository extends SignatureRequestReposito
       const url = URL.createObjectURL(content);
       return {
         documentId: document.id,
-        fileName: document.fileName,
         url,
         signedUrl: request.state === 'SIGNED' ? url : undefined,
       };
@@ -280,10 +295,23 @@ export class InMemorySignatureRequestRepository extends SignatureRequestReposito
 
   async cancel(requestId: string): Promise<void> {
     const request = this.find(requestId);
-    if (request.state !== 'SUBMITTED' || request.archiveStatus !== 'NOT_ARCHIVED') {
+    if (!canBeCancelled(request.state) || request.archiveStatus !== 'NOT_ARCHIVED') {
       fail('notSubmitted');
     }
     request.state = 'CANCELLED';
+  }
+
+  async archive(requestId: string): Promise<void> {
+    const request = this.find(requestId);
+    if (request.archiveStatus === 'ARCHIVED') fail('alreadyArchived');
+    if (!canBeArchived(request.state)) fail('notArchivable');
+    request.archiveStatus = 'ARCHIVED';
+  }
+
+  async unarchive(requestId: string): Promise<void> {
+    const request = this.find(requestId);
+    if (request.archiveStatus !== 'ARCHIVED') fail('notArchived');
+    request.archiveStatus = 'NOT_ARCHIVED';
   }
 
   private find(requestId: string): SignatureRequest {

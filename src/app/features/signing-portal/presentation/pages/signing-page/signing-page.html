@@ -26,6 +26,25 @@
           <p>Elle a été annulée, archivée ou déjà finalisée. Contactez l'expéditeur si besoin.</p>
         </section>
       }
+      @case ('expired') {
+        <section class="state">
+          <span class="state-icon"><sts-icon name="clock" [size]="28" /></span>
+          <h1>Ce lien a expiré</h1>
+          <p>
+            Le délai de signature est dépassé. Contactez l'expéditeur pour recevoir un nouveau lien.
+          </p>
+        </section>
+      }
+      @case ('blocked') {
+        <section class="state">
+          <span class="state-icon danger"><sts-icon name="lock" [size]="28" /></span>
+          <h1>Demande bloquée</h1>
+          <p>
+            Le nombre maximal de codes de vérification a été atteint : la signature n'est plus
+            possible. Contactez l'expéditeur.
+          </p>
+        </section>
+      }
       @case ('already-signed') {
         <section class="state">
           <span class="state-icon success"><sts-icon name="check-circle" [size]="28" /></span>
@@ -55,13 +74,6 @@
           </ol>
         }
 
-        @if (store.isSignedIn() && store.step() !== 'done') {
-          <p class="whoami">
-            <sts-icon name="user" [size]="14" /> {{ store.studentEmail() }}
-            <button type="button" class="link" (click)="signOut()">Changer de compte</button>
-          </p>
-        }
-
         @if (errorMessage(); as message) {
           <div class="callout danger" role="alert">
             <sts-icon name="alert-triangle" />
@@ -70,44 +82,6 @@
         }
 
         @switch (store.step()) {
-          @case ('sign-in') {
-            <form class="form-stack" [formGroup]="signInForm" (ngSubmit)="signIn()" novalidate>
-              <div>
-                <h1>Signer un document</h1>
-                <p class="lead">
-                  Connectez-vous avec votre compte Studely pour accéder au document.
-                </p>
-              </div>
-              <div class="field">
-                <label for="signin-email">E-mail</label>
-                <input
-                  id="signin-email"
-                  type="email"
-                  formControlName="email"
-                  autocomplete="username"
-                />
-                @if (signInForm.controls.email.touched && signInForm.controls.email.invalid) {
-                  <span class="error-text">Saisissez une adresse e-mail valide.</span>
-                }
-              </div>
-              <div class="field">
-                <label for="signin-password">Mot de passe</label>
-                <input
-                  id="signin-password"
-                  type="password"
-                  formControlName="password"
-                  autocomplete="current-password"
-                />
-              </div>
-              <button type="submit" class="btn-primary block" [disabled]="store.busy()">
-                @if (store.busy()) {
-                  <sts-icon name="loader" class="spin" />
-                }
-                Se connecter
-              </button>
-            </form>
-          }
-
           @case ('verify') {
             <form class="form-stack" [formGroup]="verifyForm" (ngSubmit)="verify()" novalidate>
               <div>

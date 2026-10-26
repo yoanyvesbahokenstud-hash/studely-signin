@@ -39,6 +39,16 @@
           <sts-icon name="x-circle" [size]="16" /> Annuler la demande
         </button>
       }
+      @if (store.archivable()) {
+        <button type="button" class="btn-ghost" (click)="askArchive()" [disabled]="store.busy()">
+          <sts-icon name="archive" [size]="16" /> Archiver
+        </button>
+      }
+      @if (store.archived()) {
+        <button type="button" class="btn-ghost" (click)="askUnarchive()" [disabled]="store.busy()">
+          <sts-icon name="rotate-ccw" [size]="16" /> Désarchiver
+        </button>
+      }
     </div>
   </header>
 
@@ -319,6 +329,8 @@
             —
           }
         </dd>
+        <dt>Liens valables jusqu'au</dt>
+        <dd>{{ request.expiresAt ? (request.expiresAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</dd>
         <dt>Finalisée le</dt>
         <dd>{{ request.finalizedAt ? (request.finalizedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</dd>
         <dt>Archivage</dt>

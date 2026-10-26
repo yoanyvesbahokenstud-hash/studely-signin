@@ -3,9 +3,12 @@
 export interface VerifyLinkResultDto {
   idSignatureRequest: string;
   idSigner: string;
-  signerEmail: string;
-  linkVerified: boolean;
-  toSignFilesDownloadUrls: string[] | null;
+  email: string;
+  verified: boolean;
+  documentUrls: string[] | null;
+  /** À renvoyer dans l'en-tête `X-Signing-Access-Token` aux étapes suivantes. */
+  accessToken: string;
+  accessExpiresAt: string;
 }
 
 export interface SignRequestResultDto {

@@ -41,6 +41,7 @@ export function toSignatureRequest(dto: SearchSignatureRequestResultDto): Signat
     submittedBy: infos.submittedBy ?? undefined,
     createdAt: new Date(infos.createdAt),
     submittedAt: infos.submittedAt ? new Date(infos.submittedAt) : undefined,
+    expiresAt: infos.expiredAt ? new Date(infos.expiredAt) : undefined,
     finalizedAt: infos.finalizedAt ? new Date(infos.finalizedAt) : undefined,
   };
 }
@@ -54,6 +55,7 @@ function toSigner(dto: SignerDto): Signer {
     phone: dto.phone ?? undefined,
     status: toEnum(dto.signerStatus, SIGNER_STATUSES, 'signer status'),
     fields: (dto.fields ?? []).map(toField),
+    signingLink: dto.signingLink ?? undefined,
   };
 }
 

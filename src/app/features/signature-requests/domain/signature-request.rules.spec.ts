@@ -1,5 +1,10 @@
 import { SignatureRequest, Signer } from './signature-request';
-import { canBeCancelled, isEditable, submissionBlockers } from './signature-request.rules';
+import {
+  canBeArchived,
+  canBeCancelled,
+  isEditable,
+  submissionBlockers,
+} from './signature-request.rules';
 
 const signer = (fields: Signer['fields'] = []): Signer => ({
   id: 's1',
@@ -46,9 +51,19 @@ describe('signature request rules', () => {
     expect(isEditable('SUBMITTED')).toBe(false);
   });
 
-  it('only allows cancelling submitted requests', () => {
+  it('only allows cancelling submitted or blocked requests', () => {
     expect(canBeCancelled('SUBMITTED')).toBe(true);
+    expect(canBeCancelled('BLOCKED')).toBe(true);
     expect(canBeCancelled('SIGNED')).toBe(false);
+    expect(canBeCancelled('EXPIRED')).toBe(false);
+  });
+
+  it('only allows archiving requests that are no longer in progress', () => {
+    expect(
+      ['DRAFT', 'SIGNED', 'CANCELLED', 'EXPIRED'].every((state) => canBeArchived(state as never)),
+    ).toBe(true);
+    expect(canBeArchived('SUBMITTED')).toBe(false);
+    expect(canBeArchived('BLOCKED')).toBe(false);
   });
 
   it('has no blocker for a complete draft', () => {

@@ -1,11 +1,13 @@
 import { Injectable } from '@angular/core';
 import { AppError } from '@shared/domain/app-error';
-import { SigningLink, SigningOutcome, VerifiedLink } from '../../domain/signing';
+import { OtpChannel, SigningLink, SigningOutcome, VerifiedLink } from '../../domain/signing';
 import { SignerPortalRepository } from '../../domain/signer-portal.repository';
 import { mockPdf } from '@core/mocks/mock-pdf';
 
 /** Code OTP accepté par l'adaptateur en mémoire. */
 export const MOCK_OTP = '123456';
+
+const MOCK_ACCESS_TOKEN = 'mock-access-token';
 
 interface MockSigner {
   email: string;
@@ -64,22 +66,27 @@ export class InMemorySignerPortalRepository extends SignerPortalRepository {
     return {
       signerEmail: signer.email,
       documentUrls: [this.blobUrl(mockPdf('Contrat simule'))],
+      accessToken: MOCK_ACCESS_TOKEN,
+      accessExpiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
     };
   }
 
-  async requestOtp(link: SigningLink): Promise<void> {
+  async requestOtp(
+    link: SigningLink,
+    _channel: OtpChannel,
+    _lang: string,
+    accessToken: string,
+  ): Promise<void> {
     const signer = this.signer(link);
-    if (!signer.verified)
-      throw new AppError(400, '400_440', 'SignatureRequest: signer link is not verified');
+    this.authorize(signer, accessToken);
     this.otpRequested = true;
   }
 
-  async sign(link: SigningLink, otp: string): Promise<SigningOutcome> {
+  async sign(link: SigningLink, otp: string, accessToken: string): Promise<SigningOutcome> {
     const signer = this.signer(link);
+    this.authorize(signer, accessToken);
     if (signer.signed)
-      throw new AppError(500, '500_400', 'Signer: cannot sign fields in current signer status');
-    if (!signer.verified)
-      throw new AppError(400, '400_440', 'SignatureRequest: signer link is not verified');
+      throw new AppError(400, '400_456', 'Signer: cannot sign fields in current signer status');
     if (!this.otpRequested || otp !== MOCK_OTP) {
       throw new AppError(400, '400_441', 'SignatureRequest: OTP does not match');
     }
@@ -91,6 +98,11 @@ export class InMemorySignerPortalRepository extends SignerPortalRepository {
       completed,
       signedDocumentUrls: completed ? [this.blobUrl(mockPdf('Contrat signe (simule)', 1))] : [],
     };
+  }
+
+  private authorize(signer: MockSigner, accessToken: string): void {
+    if (!signer.verified || accessToken !== MOCK_ACCESS_TOKEN)
+      throw new AppError(400, '400_440', 'SignatureRequest: verification required');
   }
 
   private signer(link: SigningLink): MockSigner {

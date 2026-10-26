@@ -19,7 +19,6 @@ import { signingErrorMessage } from '../../error-messages';
 const LANG = 'fr';
 
 const STEPS: { step: SigningStep; label: string }[] = [
-  { step: 'sign-in', label: 'Connexion' },
   { step: 'verify', label: 'Vérification' },
   { step: 'review', label: 'Documents' },
   { step: 'otp', label: 'Signature' },
@@ -56,10 +55,6 @@ export class SigningPage {
   );
 
   private readonly forms = inject(FormBuilder).nonNullable;
-  protected readonly signInForm = this.forms.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', Validators.required],
-  });
   protected readonly verifyForm = this.forms.group({
     email: ['', [Validators.required, Validators.email]],
   });
@@ -76,23 +71,8 @@ export class SigningPage {
       const link = { requestId: this.requestId(), signerId: this.signerId() };
       untracked(() => {
         this.store.start(link);
-        this.prefillEmail();
       });
     });
-  }
-
-  protected async signIn(): Promise<void> {
-    if (this.invalid(this.signInForm)) return;
-    const { email, password } = this.signInForm.getRawValue();
-    if (await this.store.signIn(email.trim(), password)) {
-      this.prefillEmail();
-    }
-    this.signInForm.controls.password.reset();
-  }
-
-  protected signOut(): void {
-    this.store.signOut();
-    this.signInForm.reset();
   }
 
   protected verify(): void {
@@ -122,13 +102,6 @@ export class SigningPage {
 
   protected open(url: string): void {
     window.open(url, '_blank', 'noopener');
-  }
-
-  private prefillEmail(): void {
-    const email = this.store.studentEmail();
-    if (email && !this.verifyForm.controls.email.value) {
-      this.verifyForm.setValue({ email });
-    }
   }
 
   private invalid(form: { invalid: boolean; markAllAsTouched(): void }): boolean {

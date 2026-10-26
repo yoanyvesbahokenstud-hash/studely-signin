@@ -41,25 +41,31 @@ describe('HttpSignerPortalRepository', () => {
     req.flush({
       status: 200,
       data: {
-        signerEmail: 'ada@example.com',
-        linkVerified: true,
-        toSignFilesDownloadUrls: ['https://s3/doc'],
+        idSignatureRequest: 'r1',
+        idSigner: 's1',
+        email: 'ada@example.com',
+        verified: true,
+        documentUrls: ['https://s3/doc'],
+        accessToken: 'access-1',
+        accessExpiresAt: '2026-10-26T12:00:00Z',
       },
     });
 
     expect(await verified).toEqual({
       signerEmail: 'ada@example.com',
       documentUrls: ['https://s3/doc'],
+      accessToken: 'access-1',
+      accessExpiresAt: new Date('2026-10-26T12:00:00Z'),
     });
   });
 
-  it("passes the student's id_token to request the OTP", async () => {
-    const requested = repository.requestOtp(LINK, 'SMS', 'fr', 'student-jwt');
+  it('requests the OTP with the access token header, without the student token', async () => {
+    const requested = repository.requestOtp(LINK, 'SMS', 'fr', 'access-1');
     const req = http.expectOne('/api/signer/signing-otp');
+    expect(req.request.headers.get('X-Signing-Access-Token')).toBe('access-1');
     expect(req.request.body).toEqual({
       idSignatureRequest: 'r1',
       idSigner: 's1',
-      token: 'student-jwt',
       lang: 'fr',
       otpMode: 'SMS',
     });
@@ -67,14 +73,14 @@ describe('HttpSignerPortalRepository', () => {
     await requested;
   });
 
-  it('signs with the backend key names (idRequest, SignerToken)', async () => {
-    const signed = repository.sign(LINK, '123456', 'student-jwt');
+  it('signs with the access token header and the backend key name idRequest', async () => {
+    const signed = repository.sign(LINK, '123456', 'access-1');
     const req = http.expectOne('/api/signer/execute-signing');
+    expect(req.request.headers.get('X-Signing-Access-Token')).toBe('access-1');
     expect(req.request.body).toEqual({
       idRequest: 'r1',
       idSigner: 's1',
       providedOtp: '123456',
-      SignerToken: 'student-jwt',
     });
     req.flush({
       status: 200,

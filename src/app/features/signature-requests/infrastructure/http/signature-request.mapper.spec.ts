@@ -13,6 +13,7 @@ const dto: SearchSignatureRequestResultDto = {
         lastname: 'Lovelace',
         email: 'ada@example.com',
         phone: '+33612345678',
+        signingLink: 'https://sign.studely.com/sign/r1/s1',
         signerStatus: 'PENDING',
         fields: [
           {
@@ -39,6 +40,7 @@ const dto: SearchSignatureRequestResultDto = {
     submittedBy: 'manager',
     createdAt: '2026-10-12T09:00:00Z',
     submittedAt: '2026-10-12T10:00:00Z',
+    expiredAt: '2026-11-11T10:00:00Z',
     finalizedAt: null,
   },
 };
@@ -51,7 +53,22 @@ describe('toSignatureRequest', () => {
     expect(request.state).toBe('SUBMITTED');
     expect(request.reminderCount).toBe(1);
     expect(request.finalizedAt).toBeUndefined();
-    expect(request.signers[0]).toMatchObject({ firstName: '', status: 'PENDING' });
+    expect(request.expiresAt).toEqual(new Date('2026-11-11T10:00:00Z'));
+    expect(request.signers[0]).toMatchObject({
+      firstName: '',
+      status: 'PENDING',
+      signingLink: 'https://sign.studely.com/sign/r1/s1',
+    });
+  });
+
+  it('accepts the EXPIRED and BLOCKED states', () => {
+    for (const requestState of ['EXPIRED', 'BLOCKED']) {
+      const request = toSignatureRequest({
+        ...dto,
+        requestInfos: { ...dto.requestInfos, requestState },
+      });
+      expect(request.state).toBe(requestState);
+    }
   });
 
   it('parses the field coordinates the backend sends as strings', () => {
@@ -71,8 +88,8 @@ describe('toSignatureRequest', () => {
   });
 
   it('rejects an unknown state rather than displaying it wrongly', () => {
-    const unknown = { ...dto, requestInfos: { ...dto.requestInfos, requestState: 'EXPIRED' } };
+    const unknown = { ...dto, requestInfos: { ...dto.requestInfos, requestState: 'DELETED' } };
 
-    expect(() => toSignatureRequest(unknown)).toThrow('Unknown signature request state: EXPIRED');
+    expect(() => toSignatureRequest(unknown)).toThrow('Unknown signature request state: DELETED');
   });
 });

@@ -15,8 +15,14 @@ export function signedCount(request: SignatureRequest): number {
   return request.signers.filter((signer) => signer.status === 'FINISHED').length;
 }
 
+/** Une demande bloquée (quota d'OTP épuisé) ne peut plus aboutir : seule l'annulation reste possible. */
 export function canBeCancelled(state: SignatureRequestState): boolean {
-  return state === 'SUBMITTED';
+  return state === 'SUBMITTED' || state === 'BLOCKED';
+}
+
+/** Miroir de `SignatureRequest.archive()` côté backend (400_408). */
+export function canBeArchived(state: SignatureRequestState): boolean {
+  return state === 'DRAFT' || state === 'SIGNED' || state === 'CANCELLED' || state === 'EXPIRED';
 }
 
 export function canBeRemindedOf(state: SignatureRequestState): boolean {

@@ -47,7 +47,7 @@ export class SignatureRequestList implements OnInit {
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
 
-  protected readonly states = SIGNATURE_REQUEST_STATES.filter((state) => state !== 'DELETED');
+  protected readonly states = SIGNATURE_REQUEST_STATES;
   protected readonly stateMeta = REQUEST_STATE_META;
   /** Formulaire « Nouvelle demande » : rien n'est créé avant sa validation. */
   protected readonly creationOpen = signal(false);

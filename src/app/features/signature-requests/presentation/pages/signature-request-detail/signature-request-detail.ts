@@ -193,7 +193,8 @@ export class SignatureRequestDetail {
       this.toasts.error('Ouverture impossible', 'Lien de téléchargement indisponible.');
       return;
     }
-    const title = signed ? `${link.fileName} (version signée)` : link.fileName;
+    const fileName = this.documentNames().get(documentId) ?? 'Document';
+    const title = signed ? `${fileName} (version signée)` : fileName;
     this.open({ kind: 'preview', title, url });
   }
 
@@ -257,6 +258,30 @@ export class SignatureRequestDetail {
       tone: 'danger',
       run: () => this.store.cancel(),
       success: 'Demande annulée',
+    });
+  }
+
+  protected askArchive(): void {
+    this.open({
+      kind: 'confirm',
+      title: 'Archiver la demande',
+      message: 'La demande sera archivée. Vous pourrez la désarchiver à tout moment.',
+      confirmLabel: 'Archiver',
+      tone: 'primary',
+      run: () => this.store.archive(),
+      success: 'Demande archivée',
+    });
+  }
+
+  protected askUnarchive(): void {
+    this.open({
+      kind: 'confirm',
+      title: 'Désarchiver la demande',
+      message: 'La demande sera restaurée dans son état précédent.',
+      confirmLabel: 'Désarchiver',
+      tone: 'primary',
+      run: () => this.store.unarchive(),
+      success: 'Demande désarchivée',
     });
   }
 

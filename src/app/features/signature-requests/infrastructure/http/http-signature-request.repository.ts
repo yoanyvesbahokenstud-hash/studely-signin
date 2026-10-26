@@ -104,7 +104,6 @@ export class HttpSignatureRequestRepository extends SignatureRequestRepository {
     );
     return response.data.documents.map((document) => ({
       documentId: document.idDocument,
-      fileName: document.fileName,
       url: document.downloadUrl,
       signedUrl: document.downloadUrlSignedFile ?? undefined,
     }));
@@ -199,17 +198,34 @@ export class HttpSignatureRequestRepository extends SignatureRequestRepository {
     );
   }
 
-  /** `PATCH /submit-request` */
+  /** `PATCH /submit-request` — sans `canReceiveSigningLink: true`, aucun e-mail n'est envoyé aux signataires. */
   submit(requestId: string): Promise<void> {
     return this.send(
-      this.http.patch(`${this.baseUrl}/submit-request`, { idSignatureRequest: requestId }),
+      this.http.patch(`${this.baseUrl}/submit-request`, {
+        idSignatureRequest: requestId,
+        canReceiveSigningLink: true,
+      }),
     );
   }
 
-  /** `POST /{id}/cancel-request` */
+  /** `PATCH /{id}/cancel-request` */
   cancel(requestId: string): Promise<void> {
     return this.send(
-      this.http.post(`${this.baseUrl}/${encodeURIComponent(requestId)}/cancel-request`, null),
+      this.http.patch(`${this.baseUrl}/${encodeURIComponent(requestId)}/cancel-request`, null),
+    );
+  }
+
+  /** `DELETE /{id}/archive-request` */
+  archive(requestId: string): Promise<void> {
+    return this.send(
+      this.http.delete(`${this.baseUrl}/${encodeURIComponent(requestId)}/archive-request`),
+    );
+  }
+
+  /** `PATCH /{id}/unarchive-request` */
+  unarchive(requestId: string): Promise<void> {
+    return this.send(
+      this.http.patch(`${this.baseUrl}/${encodeURIComponent(requestId)}/unarchive-request`, null),
     );
   }
 

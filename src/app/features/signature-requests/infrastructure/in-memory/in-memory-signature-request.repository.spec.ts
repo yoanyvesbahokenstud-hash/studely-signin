@@ -88,4 +88,14 @@ describe('InMemorySignatureRequestRepository', () => {
   it('only cancels a submitted request (400_401)', async () => {
     await expect(repository.cancel(id)).rejects.toMatchObject({ code: '400_401' });
   });
+
+  it('archives a draft once, then unarchives it (400_406, 400_407)', async () => {
+    await repository.archive(id);
+    expect((await repository.findById(id))!.archiveStatus).toBe('ARCHIVED');
+    await expect(repository.archive(id)).rejects.toMatchObject({ code: '400_406' });
+
+    await repository.unarchive(id);
+    expect((await repository.findById(id))!.archiveStatus).toBe('NOT_ARCHIVED');
+    await expect(repository.unarchive(id)).rejects.toMatchObject({ code: '400_407' });
+  });
 });

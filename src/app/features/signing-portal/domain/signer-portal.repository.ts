@@ -8,12 +8,13 @@ export abstract class SignerPortalRepository {
   /** Le signataire prouve qu'il est le destinataire du lien en saisissant son e-mail. */
   abstract verifyLink(link: SigningLink, email: string): Promise<VerifiedLink>;
 
+  /** `accessToken` : jeton remis par `verifyLink`. */
   abstract requestOtp(
     link: SigningLink,
     channel: OtpChannel,
     lang: string,
-    idToken: string,
+    accessToken: string,
   ): Promise<void>;
 
-  abstract sign(link: SigningLink, otp: string, idToken: string): Promise<SigningOutcome>;
+  abstract sign(link: SigningLink, otp: string, accessToken: string): Promise<SigningOutcome>;
 }

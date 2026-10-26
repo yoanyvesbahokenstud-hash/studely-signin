@@ -20,6 +20,7 @@ export interface SignerDto {
   email: string;
   phone: string | null;
   fields: SignatureFieldDto[] | null;
+  signingLink: string | null;
   signerStatus: string;
 }
 
@@ -49,6 +50,8 @@ export interface SignatureRequestInfosDto {
   submittedBy: string | null;
   createdAt: string;
   submittedAt: string | null;
+  /** Date d'expiration des liens de signature (malgré le nom). */
+  expiredAt: string | null;
   finalizedAt: string | null;
 }
 
@@ -68,7 +71,6 @@ export interface GetDocumentFilesResultDto {
   idRequest: string;
   documents: {
     idDocument: string;
-    fileName: string;
     downloadUrl: string;
     downloadUrlSignedFile: string | null;
   }[];

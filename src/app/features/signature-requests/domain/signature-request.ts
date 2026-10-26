@@ -5,8 +5,10 @@ export const SIGNATURE_REQUEST_STATES = [
   'DRAFT',
   'SUBMITTED',
   'SIGNED',
+  'EXPIRED',
   'CANCELLED',
-  'DELETED',
+  /** Quota d'OTP épuisé par un signataire : plus aucune signature possible, la demande reste annulable. */
+  'BLOCKED',
 ] as const;
 
 export type SignatureRequestState = (typeof SIGNATURE_REQUEST_STATES)[number];
@@ -43,6 +45,8 @@ export interface Signer {
   phone?: string;
   status: SignerStatus;
   fields: SignatureField[];
+  /** Lien de signature envoyé par e-mail, attribué à la soumission. */
+  signingLink?: string;
 }
 
 export interface Follower {
@@ -66,6 +70,8 @@ export interface SignatureRequest {
   submittedBy?: string;
   createdAt: Date;
   submittedAt?: Date;
+  /** Date d'expiration des liens de signature, connue une fois la demande soumise. */
+  expiresAt?: Date;
   finalizedAt?: Date;
 }
 
@@ -107,7 +113,6 @@ export interface FieldInput {
 /** Liens présignés de téléchargement, valables 15 minutes. */
 export interface DocumentLink {
   documentId: string;
-  fileName: string;
   url: string;
   /** Renseigné seulement quand la demande est `SIGNED`. */
   signedUrl?: string;

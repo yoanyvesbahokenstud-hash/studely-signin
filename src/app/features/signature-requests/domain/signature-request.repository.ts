@@ -51,4 +51,6 @@ export abstract class SignatureRequestRepository {
 
   abstract submit(requestId: string): Promise<void>;
   abstract cancel(requestId: string): Promise<void>;
+  abstract archive(requestId: string): Promise<void>;
+  abstract unarchive(requestId: string): Promise<void>;
 }

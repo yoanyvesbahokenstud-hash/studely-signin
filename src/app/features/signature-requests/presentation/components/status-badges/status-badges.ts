@@ -12,8 +12,9 @@ export const REQUEST_STATE_META: Record<SignatureRequestState, StatusMeta> = {
   DRAFT: { label: 'Brouillon', tone: 'neutral' },
   SUBMITTED: { label: 'En cours de signature', tone: 'info' },
   SIGNED: { label: 'Signée', tone: 'success' },
+  EXPIRED: { label: 'Expirée', tone: 'warning' },
   CANCELLED: { label: 'Annulée', tone: 'danger' },
-  DELETED: { label: 'Supprimée', tone: 'neutral' },
+  BLOCKED: { label: 'Bloquée', tone: 'danger' },
 };
 
 /** Côté backend : `UNUSED` = aucun champ attribué, `PENDING` = a des champs et doit signer. */

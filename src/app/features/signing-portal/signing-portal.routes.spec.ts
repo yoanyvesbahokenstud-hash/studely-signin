@@ -49,21 +49,15 @@ describe('signing portal feature', () => {
     await settle(harness);
   }
 
-  it('lets the last signer sign, from sign-in to the signed documents', async () => {
+  it('lets the last signer sign, from the email check to the signed documents', async () => {
     const harness = await RouterTestingHarness.create('/sign/req-2/s-2');
     await settle(harness);
     const page = harness.routeNativeElement!;
-    expect(page.textContent).toContain('Connectez-vous avec votre compte Studely');
-
-    type(page, '#signin-email', 'noah.bernard@example.com');
-    type(page, '#signin-password', 'secret');
-    await submit(harness);
+    // Aucun compte à saisir : le parcours commence directement par l'e-mail du signataire.
+    expect(page.querySelector('input[type="password"]')).toBeNull();
     expect(page.textContent).toContain('Confirmez votre identité');
-    // L'e-mail du compte est proposé par défaut.
-    expect(page.querySelector<HTMLInputElement>('#verify-email')!.value).toBe(
-      'noah.bernard@example.com',
-    );
 
+    type(page, '#verify-email', 'noah.bernard@example.com');
     await submit(harness);
     expect(page.textContent).toContain('Lisez les documents');
 
@@ -98,10 +92,7 @@ describe('signing portal feature', () => {
     const harness = await RouterTestingHarness.create('/sign/req-2/s-2');
     await settle(harness);
     const page = harness.routeNativeElement!;
-    type(page, '#signin-email', 'someone@example.com');
-    type(page, '#signin-password', 'secret');
-    await submit(harness);
-
+    type(page, '#verify-email', 'someone@example.com');
     await submit(harness);
 
     expect(page.textContent).toContain('ne correspond pas à celle du signataire');
@@ -111,10 +102,7 @@ describe('signing portal feature', () => {
     const harness = await RouterTestingHarness.create('/sign/unknown/s-1');
     await settle(harness);
     const page = harness.routeNativeElement!;
-    type(page, '#signin-email', 'noah.bernard@example.com');
-    type(page, '#signin-password', 'secret');
-    await submit(harness);
-
+    type(page, '#verify-email', 'noah.bernard@example.com');
     await submit(harness);
 
     expect(page.textContent).toContain('Lien invalide');

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 export type IconName =
   | 'alert-triangle'
+  | 'archive'
   | 'arrow-left'
   | 'bell'
   | 'calendar'
@@ -63,6 +64,11 @@ export type IconName =
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
           <path d="M12 9v4" />
           <path d="M12 17h.01" />
+        }
+        @case ('archive') {
+          <rect width="20" height="5" x="2" y="3" rx="1" />
+          <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+          <path d="M10 12h4" />
         }
         @case ('arrow-left') {
           <path d="m12 19-7-7 7-7" />

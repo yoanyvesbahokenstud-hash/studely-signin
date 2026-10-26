@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { AppError } from '@shared/domain/app-error';
 import {
   OtpChannel,
@@ -8,34 +8,37 @@ import {
   VerifiedLink,
 } from '../domain/signing';
 import { SignerPortalRepository } from '../domain/signer-portal.repository';
-import { StudentAuth } from '../domain/student-auth';
 
 /** Situations où le parcours ne peut pas aboutir, quoi que fasse le signataire. */
-export type SigningDeadEnd = 'invalid-link' | 'closed' | 'already-signed';
+export type SigningDeadEnd = 'invalid-link' | 'closed' | 'expired' | 'blocked' | 'already-signed';
 
 /** Codes `SigningError` qui mettent fin au parcours. */
 const DEAD_ENDS: Record<string, SigningDeadEnd> = {
   '400_460': 'invalid-link', // demande introuvable
   '400_416': 'invalid-link', // signataire introuvable dans la demande
   '400_401': 'closed', // demande annulée, déjà signée ou archivée
-  '500_400': 'already-signed', // le signataire n'est plus « à signer »
+  '400_447': 'expired', // liens de signature expirés
+  '400_458': 'blocked', // quota d'OTP épuisé : la demande est bloquée
+  '400_456': 'already-signed', // le signataire n'est plus « à signer »
+  '400_457': 'already-signed', // plus aucun champ à signer
 };
+
+/** Le jeton d'accès est absent, invalide ou expiré : il faut revérifier l'e-mail. */
+const ACCESS_LOST = '400_440';
 
 /** État du parcours de signature, exposé en signals à la page. */
 @Injectable()
 export class SigningPortalStore {
   private readonly repository = inject(SignerPortalRepository);
-  private readonly auth = inject(StudentAuth);
 
   private readonly linkState = signal<SigningLink | null>(null);
-  private readonly stepState = signal<SigningStep>('sign-in');
+  private readonly stepState = signal<SigningStep>('verify');
   private readonly verifiedState = signal<VerifiedLink | null>(null);
   private readonly channelState = signal<OtpChannel>('MAIL');
   private readonly outcomeState = signal<SigningOutcome | null>(null);
   private readonly busyState = signal(false);
   private readonly errorState = signal<AppError | null>(null);
   private readonly deadEndState = signal<SigningDeadEnd | null>(null);
-  private readonly studentEmailState = signal<string | null>(null);
 
   readonly step = this.stepState.asReadonly();
   readonly verified = this.verifiedState.asReadonly();
@@ -45,8 +48,6 @@ export class SigningPortalStore {
   /** Dernière erreur récupérable (saisie à corriger, code expiré…). */
   readonly error = this.errorState.asReadonly();
   readonly deadEnd = this.deadEndState.asReadonly();
-  readonly studentEmail = this.studentEmailState.asReadonly();
-  readonly isSignedIn = computed(() => this.studentEmailState() !== null);
 
   start(link: SigningLink): void {
     this.linkState.set(link);
@@ -54,24 +55,7 @@ export class SigningPortalStore {
     this.deadEndState.set(null);
     this.outcomeState.set(null);
     this.verifiedState.set(null);
-    this.studentEmailState.set(this.auth.student()?.email ?? null);
-    this.stepState.set(this.isSignedIn() ? 'verify' : 'sign-in');
-  }
-
-  signIn(email: string, password: string): Promise<boolean> {
-    return this.run(async () => {
-      const student = await this.auth.signIn(email, password);
-      this.studentEmailState.set(student.email);
-      this.stepState.set('verify');
-    });
-  }
-
-  signOut(): void {
-    this.auth.signOut();
-    this.studentEmailState.set(null);
-    this.verifiedState.set(null);
-    this.errorState.set(null);
-    this.stepState.set('sign-in');
+    this.stepState.set('verify');
   }
 
   verify(email: string): Promise<boolean> {
@@ -85,7 +69,7 @@ export class SigningPortalStore {
   requestOtp(channel: OtpChannel, lang: string): Promise<boolean> {
     this.channelState.set(channel);
     return this.run(async (link) => {
-      await this.repository.requestOtp(link, channel, lang, this.requireToken());
+      await this.repository.requestOtp(link, channel, lang, this.requireAccessToken());
       this.stepState.set('otp');
     });
   }
@@ -93,7 +77,7 @@ export class SigningPortalStore {
   /** Renvoie un code sur le même canal, sans quitter l'étape de saisie. */
   resendOtp(lang: string): Promise<boolean> {
     return this.run((link) =>
-      this.repository.requestOtp(link, this.channelState(), lang, this.requireToken()),
+      this.repository.requestOtp(link, this.channelState(), lang, this.requireAccessToken()),
     );
   }
 
@@ -105,20 +89,18 @@ export class SigningPortalStore {
 
   sign(otp: string): Promise<boolean> {
     return this.run(async (link) => {
-      this.outcomeState.set(await this.repository.sign(link, otp, this.requireToken()));
+      this.outcomeState.set(await this.repository.sign(link, otp, this.requireAccessToken()));
       this.stepState.set('done');
     });
   }
 
-  /** La session étudiante a pu expirer pendant le parcours : on renvoie alors à la connexion. */
-  private requireToken(): string {
-    const token = this.auth.idToken();
-    if (!token) {
-      this.studentEmailState.set(null);
-      this.stepState.set('sign-in');
-      throw new AppError(401, 'SESSION_EXPIRED', 'Student session expired');
+  /** Le jeton d'accès se perd au rechargement de la page ou expire : l'e-mail doit être revérifié. */
+  private requireAccessToken(): string {
+    const verified = this.verifiedState();
+    if (!verified || verified.accessExpiresAt.getTime() <= Date.now()) {
+      throw new AppError(400, ACCESS_LOST, 'Signing access expired');
     }
-    return token;
+    return verified.accessToken;
   }
 
   private async run(action: (link: SigningLink) => Promise<unknown>): Promise<boolean> {
@@ -137,6 +119,10 @@ export class SigningPortalStore {
       if (deadEnd) {
         this.deadEndState.set(deadEnd);
       } else {
+        if (appError.code === ACCESS_LOST) {
+          this.verifiedState.set(null);
+          this.stepState.set('verify');
+        }
         this.errorState.set(appError);
       }
       return false;

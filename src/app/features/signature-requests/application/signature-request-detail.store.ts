@@ -9,7 +9,12 @@ import {
   SignerInput,
 } from '../domain/signature-request';
 import { SignatureRequestRepository } from '../domain/signature-request.repository';
-import { canBeCancelled, isEditable, submissionBlockers } from '../domain/signature-request.rules';
+import {
+  canBeArchived,
+  canBeCancelled,
+  isEditable,
+  submissionBlockers,
+} from '../domain/signature-request.rules';
 import { GetSignatureRequest } from './get-signature-request.use-case';
 import { toAppError } from './to-app-error';
 
@@ -49,6 +54,15 @@ export class SignatureRequestDetailStore {
       request !== null && canBeCancelled(request.state) && request.archiveStatus === 'NOT_ARCHIVED'
     );
   });
+
+  readonly archivable = computed(() => {
+    const request = this.requestState();
+    return (
+      request !== null && canBeArchived(request.state) && request.archiveStatus === 'NOT_ARCHIVED'
+    );
+  });
+
+  readonly archived = computed(() => this.requestState()?.archiveStatus === 'ARCHIVED');
 
   readonly blockers = computed(() => {
     const request = this.requestState();
@@ -120,6 +134,14 @@ export class SignatureRequestDetailStore {
 
   cancel(): Promise<AppError | null> {
     return this.run((id) => this.repository.cancel(id));
+  }
+
+  archive(): Promise<AppError | null> {
+    return this.run((id) => this.repository.archive(id));
+  }
+
+  unarchive(): Promise<AppError | null> {
+    return this.run((id) => this.repository.unarchive(id));
   }
 
   /** Liens présignés (15 min) : demandés au moment du clic, jamais mis en cache. */

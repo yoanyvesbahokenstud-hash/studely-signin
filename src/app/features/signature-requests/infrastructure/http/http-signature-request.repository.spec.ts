@@ -124,7 +124,6 @@ describe('HttpSignatureRequestRepository', () => {
         documents: [
           {
             idDocument: 'd1',
-            fileName: 'a.pdf',
             downloadUrl: 'https://s3/a',
             downloadUrlSignedFile: null,
           },
@@ -132,21 +131,29 @@ describe('HttpSignatureRequestRepository', () => {
       },
     });
 
-    expect(await links).toEqual([
-      { documentId: 'd1', fileName: 'a.pdf', url: 'https://s3/a', signedUrl: undefined },
-    ]);
+    expect(await links).toEqual([{ documentId: 'd1', url: 'https://s3/a', signedUrl: undefined }]);
   });
 
   it('submits and cancels', async () => {
     const submitted = repository.submit('r1');
     const submit = http.expectOne(`${BASE}/submit-request`);
     expect(submit.request.method).toBe('PATCH');
-    expect(submit.request.body).toEqual({ idSignatureRequest: 'r1' });
+    expect(submit.request.body).toEqual({ idSignatureRequest: 'r1', canReceiveSigningLink: true });
     submit.flush(OK);
     await submitted;
 
     const cancelled = repository.cancel('r1');
-    http.expectOne({ method: 'POST', url: `${BASE}/r1/cancel-request` }).flush(OK);
+    http.expectOne({ method: 'PATCH', url: `${BASE}/r1/cancel-request` }).flush(OK);
     await cancelled;
+  });
+
+  it('archives and unarchives', async () => {
+    const archived = repository.archive('r1');
+    http.expectOne({ method: 'DELETE', url: `${BASE}/r1/archive-request` }).flush(OK);
+    await archived;
+
+    const unarchived = repository.unarchive('r1');
+    http.expectOne({ method: 'PATCH', url: `${BASE}/r1/unarchive-request` }).flush(OK);
+    await unarchived;
   });
 });
