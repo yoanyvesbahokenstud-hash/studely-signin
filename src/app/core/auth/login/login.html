@@ -1,0 +1,97 @@
+<div class="login-page">
+  <div class="login-card">
+    <section class="form-panel">
+      <img
+        class="logo"
+        [src]="theme.isDark() ? 'logo-studely-white.png' : 'logo-studely.png'"
+        alt="Studely"
+      />
+
+      <h1>Connexion</h1>
+      <p class="subtitle">Accédez au back-office de signature électronique.</p>
+
+      @if (errorMessage(); as message) {
+        <div class="callout danger" role="alert">
+          <sts-icon name="alert-triangle" />
+          <p>{{ message }}</p>
+        </div>
+      } @else if (returnUrl()) {
+        <div class="callout" role="status">
+          <sts-icon name="info" />
+          <p>Connectez-vous pour continuer.</p>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="field">
+          <label for="email">E-mail</label>
+          <div
+            class="input-wrap"
+            [class.invalid]="form.controls.email.touched && form.controls.email.invalid"
+          >
+            <sts-icon name="mail" />
+            <input
+              id="email"
+              type="email"
+              formControlName="email"
+              autocomplete="username"
+              placeholder="prenom.nom@studely.com"
+            />
+          </div>
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <span class="error-text">Saisissez une adresse e-mail valide.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <div
+            class="input-wrap"
+            [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
+          >
+            <sts-icon name="lock" />
+            <input
+              id="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="current-password"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              class="eye"
+              (click)="togglePassword()"
+              [attr.aria-label]="
+                showPassword() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+              "
+            >
+              <sts-icon [name]="showPassword() ? 'eye-off' : 'eye'" />
+            </button>
+          </div>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <span class="error-text">Saisissez votre mot de passe.</span>
+          }
+        </div>
+
+        <button type="submit" class="btn-primary block" [disabled]="loading()">
+          @if (loading()) {
+            <sts-icon name="loader" class="spin" /> Connexion…
+          } @else {
+            Se connecter
+          }
+        </button>
+      </form>
+
+      <p class="footnote">Utilisez vos identifiants Studely.</p>
+    </section>
+
+    <aside class="brand-panel" aria-hidden="true">
+      <div class="brand-content">
+        <span class="brand-icon"><sts-icon name="file-signature" [size]="34" /></span>
+        <h2>Studely Signing</h2>
+        <span class="accent-line"></span>
+        <p>Préparez, envoyez et suivez vos demandes de signature électronique.</p>
+      </div>
+    </aside>
+  </div>
+</div>

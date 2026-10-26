@@ -1,0 +1,286 @@
+<div class="portal">
+  <div class="card">
+    <header class="portal-head">
+      <img
+        class="logo"
+        [src]="theme.isDark() ? 'logo-studely-white.png' : 'logo-studely.png'"
+        alt="Studely"
+      />
+      <span class="product">Signature électronique</span>
+    </header>
+
+    @switch (store.deadEnd()) {
+      @case ('invalid-link') {
+        <section class="state">
+          <span class="state-icon danger"><sts-icon name="x-circle" [size]="28" /></span>
+          <h1>Lien invalide</h1>
+          <p>
+            Ce lien de signature n'existe pas ou est incomplet. Vérifiez le lien reçu par e-mail.
+          </p>
+        </section>
+      }
+      @case ('closed') {
+        <section class="state">
+          <span class="state-icon"><sts-icon name="info" [size]="28" /></span>
+          <h1>Cette demande n'est plus à signer</h1>
+          <p>Elle a été annulée, archivée ou déjà finalisée. Contactez l'expéditeur si besoin.</p>
+        </section>
+      }
+      @case ('already-signed') {
+        <section class="state">
+          <span class="state-icon success"><sts-icon name="check-circle" [size]="28" /></span>
+          <h1>Vous avez déjà signé</h1>
+          <p>Votre signature a bien été enregistrée pour cette demande.</p>
+        </section>
+      }
+      @default {
+        @if (store.step() !== 'done') {
+          <ol class="stepper" aria-label="Étapes">
+            @for (item of steps; track item.step; let index = $index) {
+              <li
+                [class.current]="index === stepIndex()"
+                [class.complete]="index < stepIndex()"
+                [attr.aria-current]="index === stepIndex() ? 'step' : null"
+              >
+                <span class="dot">
+                  @if (index < stepIndex()) {
+                    <sts-icon name="check-circle" [size]="14" />
+                  } @else {
+                    {{ index + 1 }}
+                  }
+                </span>
+                <span class="label">{{ item.label }}</span>
+              </li>
+            }
+          </ol>
+        }
+
+        @if (store.isSignedIn() && store.step() !== 'done') {
+          <p class="whoami">
+            <sts-icon name="user" [size]="14" /> {{ store.studentEmail() }}
+            <button type="button" class="link" (click)="signOut()">Changer de compte</button>
+          </p>
+        }
+
+        @if (errorMessage(); as message) {
+          <div class="callout danger" role="alert">
+            <sts-icon name="alert-triangle" />
+            <p>{{ message }}</p>
+          </div>
+        }
+
+        @switch (store.step()) {
+          @case ('sign-in') {
+            <form class="form-stack" [formGroup]="signInForm" (ngSubmit)="signIn()" novalidate>
+              <div>
+                <h1>Signer un document</h1>
+                <p class="lead">
+                  Connectez-vous avec votre compte Studely pour accéder au document.
+                </p>
+              </div>
+              <div class="field">
+                <label for="signin-email">E-mail</label>
+                <input
+                  id="signin-email"
+                  type="email"
+                  formControlName="email"
+                  autocomplete="username"
+                />
+                @if (signInForm.controls.email.touched && signInForm.controls.email.invalid) {
+                  <span class="error-text">Saisissez une adresse e-mail valide.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="signin-password">Mot de passe</label>
+                <input
+                  id="signin-password"
+                  type="password"
+                  formControlName="password"
+                  autocomplete="current-password"
+                />
+              </div>
+              <button type="submit" class="btn-primary block" [disabled]="store.busy()">
+                @if (store.busy()) {
+                  <sts-icon name="loader" class="spin" />
+                }
+                Se connecter
+              </button>
+            </form>
+          }
+
+          @case ('verify') {
+            <form class="form-stack" [formGroup]="verifyForm" (ngSubmit)="verify()" novalidate>
+              <div>
+                <h1>Confirmez votre identité</h1>
+                <p class="lead">
+                  Saisissez l'adresse e-mail à laquelle vous avez reçu ce lien de signature.
+                </p>
+              </div>
+              <div class="field">
+                <label for="verify-email">E-mail du signataire</label>
+                <input
+                  id="verify-email"
+                  type="email"
+                  formControlName="email"
+                  autocomplete="email"
+                />
+                @if (verifyForm.controls.email.touched && verifyForm.controls.email.invalid) {
+                  <span class="error-text">Saisissez une adresse e-mail valide.</span>
+                }
+              </div>
+              <button type="submit" class="btn-primary block" [disabled]="store.busy()">
+                @if (store.busy()) {
+                  <sts-icon name="loader" class="spin" />
+                }
+                Continuer
+              </button>
+            </form>
+          }
+
+          @case ('review') {
+            <form class="form-stack" [formGroup]="reviewForm" (ngSubmit)="requestOtp()" novalidate>
+              <div>
+                <h1>Lisez les documents</h1>
+                <p class="lead">
+                  Faites défiler chaque document jusqu'à la fin, puis acceptez-les pour continuer.
+                </p>
+              </div>
+              <ul class="documents">
+                @for (url of documentUrls(); track url; let index = $index) {
+                  <li>
+                    <span class="tile"><sts-icon name="file-text" [size]="16" /></span>
+                    <span class="grow">Document {{ index + 1 }}</span>
+                    @if (reviewForm.controls.accepted.value) {
+                      <span class="read"><sts-icon name="check-circle" [size]="15" /> Lu</span>
+                    }
+                  </li>
+                } @empty {
+                  <li class="muted">Aucun document disponible pour le moment.</li>
+                }
+              </ul>
+              @if (documentUrls().length) {
+                @if (reviewForm.controls.accepted.value) {
+                  <p class="accepted">
+                    <sts-icon name="check-circle" [size]="16" />
+                    <span class="grow">Documents lus et acceptés.</span>
+                    <button type="button" class="link" (click)="readerOpen.set(true)">
+                      Relire
+                    </button>
+                  </p>
+                } @else {
+                  <button type="button" class="btn-ghost block" (click)="readerOpen.set(true)">
+                    <sts-icon name="eye" [size]="16" /> Lire et accepter les documents
+                  </button>
+                }
+              }
+              @if (reviewForm.controls.accepted.touched && reviewForm.controls.accepted.invalid) {
+                <span class="error-text">Lisez les documents jusqu'à la fin et acceptez-les.</span>
+              }
+              <fieldset class="channels">
+                <legend>Recevoir mon code de signature par</legend>
+                <label class="channel">
+                  <input type="radio" formControlName="channel" value="MAIL" />
+                  <sts-icon name="mail" [size]="16" /> E-mail
+                </label>
+                <label class="channel">
+                  <input type="radio" formControlName="channel" value="SMS" />
+                  <sts-icon name="phone" [size]="16" /> SMS
+                </label>
+              </fieldset>
+              <button type="submit" class="btn-primary block" [disabled]="store.busy()">
+                @if (store.busy()) {
+                  <sts-icon name="loader" class="spin" />
+                }
+                Recevoir mon code
+              </button>
+            </form>
+            @if (readerOpen()) {
+              <sts-document-reader
+                [urls]="documentUrls()"
+                (accepted)="acceptDocuments()"
+                (dismiss)="readerOpen.set(false)"
+              />
+            }
+          }
+
+          @case ('otp') {
+            <form class="form-stack" [formGroup]="otpForm" (ngSubmit)="sign()" novalidate>
+              <div>
+                <h1>Saisissez votre code</h1>
+                <p class="lead">
+                  Un code vous a été envoyé par {{ store.channel() === 'SMS' ? 'SMS' : 'e-mail' }}.
+                </p>
+              </div>
+              <div class="field">
+                <label for="otp-code">Code de signature</label>
+                <input
+                  id="otp-code"
+                  class="otp"
+                  formControlName="code"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  maxlength="8"
+                />
+                @if (otpForm.controls.code.touched && otpForm.controls.code.invalid) {
+                  <span class="error-text">Saisissez le code reçu (chiffres uniquement).</span>
+                }
+              </div>
+              <button type="submit" class="btn-primary block" [disabled]="store.busy()">
+                @if (store.busy()) {
+                  <sts-icon name="loader" class="spin" />
+                }
+                <sts-icon name="file-signature" [size]="16" /> Signer
+              </button>
+              <p class="secondary-actions">
+                <button type="button" class="link" (click)="resendOtp()" [disabled]="store.busy()">
+                  Renvoyer le code
+                </button>
+                ·
+                <button
+                  type="button"
+                  class="link"
+                  (click)="store.changeChannel()"
+                  [disabled]="store.busy()"
+                >
+                  Changer de canal
+                </button>
+              </p>
+            </form>
+          }
+
+          @case ('done') {
+            @if (store.outcome(); as outcome) {
+              <section class="state">
+                <span class="state-icon success"><sts-icon name="check-circle" [size]="28" /></span>
+                <h1>Signature enregistrée</h1>
+                @if (outcome.completed) {
+                  <p>
+                    Tous les signataires ont signé{{
+                      outcome.requestName ? ' « ' + outcome.requestName + ' »' : ''
+                    }}. Les documents signés sont disponibles pendant 15 minutes :
+                  </p>
+                  <ul class="documents">
+                    @for (url of outcome.signedDocumentUrls; track url; let index = $index) {
+                      <li>
+                        <span class="tile"><sts-icon name="file-signature" [size]="16" /></span>
+                        <span class="grow">Document signé {{ index + 1 }}</span>
+                        <button type="button" class="btn-ghost small" (click)="open(url)">
+                          <sts-icon name="download" [size]="15" /> Télécharger
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <p>
+                    Merci. Les documents seront finalisés lorsque tous les signataires auront signé.
+                    Vous pouvez fermer cette page.
+                  </p>
+                }
+              </section>
+            }
+          }
+        }
+      }
+    }
+  </div>
+</div>

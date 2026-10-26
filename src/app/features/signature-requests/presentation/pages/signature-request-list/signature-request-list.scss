@@ -1,0 +1,28 @@
+.table-card {
+  position: relative;
+  transition: opacity 0.15s;
+
+  &.loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+.sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+}
+
+.signers {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.code {
+  font-size: 0.8rem;
+}

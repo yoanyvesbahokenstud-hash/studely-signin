@@ -1,0 +1,62 @@
+<div class="brand">
+  @if (!layout.collapsed()) {
+    <img
+      class="logo"
+      [src]="theme.isDark() ? 'logo-studely-white.png' : 'logo-studely.png'"
+      alt="Studely"
+    />
+    <span class="product">Signing</span>
+  } @else {
+    <span class="brand-mark">S</span>
+  }
+</div>
+
+<nav class="nav" aria-label="Navigation principale">
+  @for (group of groups; track group.label) {
+    <div class="nav-group">
+      @if (!layout.collapsed()) {
+        <div class="group-label">{{ group.label }}</div>
+      }
+      @for (item of group.items; track item.route) {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [title]="item.label"
+        >
+          <sts-icon [name]="item.icon" />
+          @if (!layout.collapsed()) {
+            <span class="label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    </div>
+  }
+</nav>
+
+<div class="sidebar-footer">
+  <button
+    type="button"
+    class="footer-btn"
+    (click)="theme.toggle()"
+    [title]="theme.isDark() ? 'Passer en mode clair' : 'Passer en mode sombre'"
+  >
+    <sts-icon [name]="theme.isDark() ? 'sun' : 'moon'" />
+    @if (!layout.collapsed()) {
+      <span class="label">{{ theme.isDark() ? 'Mode clair' : 'Mode sombre' }}</span>
+    }
+  </button>
+
+  <div class="profile">
+    <span class="avatar" [title]="email()">{{ initials() }}</span>
+    @if (!layout.collapsed()) {
+      <span class="profile-meta">
+        <span class="profile-name" [title]="email()">{{ email() }}</span>
+        <span class="profile-role">{{ role() }}</span>
+      </span>
+    }
+    <button type="button" class="logout-btn" (click)="signOut()" title="Se déconnecter">
+      <sts-icon name="log-out" [size]="16" />
+    </button>
+  </div>
+</div>

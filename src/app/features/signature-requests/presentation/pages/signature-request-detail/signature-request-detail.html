@@ -1,0 +1,403 @@
+@if (store.request(); as request) {
+  <header class="page-head">
+    <div class="head-main">
+      <a class="back icon-link" routerLink="/requests" aria-label="Retour à la liste">
+        <sts-icon name="arrow-left" [size]="16" />
+      </a>
+      <div>
+        <div class="title-row">
+          <h1 [class.unnamed]="!request.name">{{ request.name || 'Demande sans nom' }}</h1>
+          <sts-request-state-badge [state]="request.state" />
+        </div>
+        <p>
+          Créée le {{ request.createdAt | date: 'dd/MM/yyyy à HH:mm' }} par {{ request.createdBy }}
+        </p>
+      </div>
+    </div>
+    <div class="page-actions">
+      @if (store.editable()) {
+        <button type="button" class="btn-ghost" (click)="open({ kind: 'info', firstSetup: false })">
+          <sts-icon name="pencil" [size]="16" /> Informations
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          (click)="askSubmit()"
+          [disabled]="store.busy() || store.blockers().length > 0"
+          [title]="store.blockers().length > 0 ? 'Complétez la demande avant de la soumettre' : ''"
+        >
+          <sts-icon name="send" [size]="16" /> Soumettre
+        </button>
+      }
+      @if (store.cancellable()) {
+        <button
+          type="button"
+          class="btn-ghost danger"
+          (click)="askCancel()"
+          [disabled]="store.busy()"
+        >
+          <sts-icon name="x-circle" [size]="16" /> Annuler la demande
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (store.editable() && !request.name) {
+    <div class="callout warning banner">
+      <sts-icon name="alert-triangle" />
+      <p>
+        Cette demande n'a pas encore de nom.
+        <button type="button" class="link" (click)="open({ kind: 'info', firstSetup: true })">
+          Nommer la demande
+        </button>
+      </p>
+    </div>
+  }
+
+  @if (store.editable() && store.blockers().length > 0) {
+    <div class="callout banner">
+      <sts-icon name="info" />
+      <div>
+        <p><strong>Pour pouvoir soumettre cette demande :</strong></p>
+        <ul>
+          @for (blocker of store.blockers(); track blocker) {
+            <li>{{ blockerLabels[blocker] }}</li>
+          }
+        </ul>
+      </div>
+    </div>
+  }
+
+  <div class="layout" [class.busy]="store.busy()">
+    <div class="main-col">
+      <!-- Documents -->
+      <section class="card">
+        <header class="card-head">
+          <h2>
+            Documents <span class="count">{{ request.documents.length }}</span>
+          </h2>
+          @if (store.editable()) {
+            <label class="btn-ghost small upload">
+              <sts-icon name="upload" [size]="15" /> Ajouter des PDF
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                multiple
+                (change)="uploadDocuments($event)"
+              />
+            </label>
+          }
+        </header>
+        @if (request.documents.length === 0) {
+          <sts-empty-state
+            icon="file-text"
+            title="Aucun document"
+            hint="Ajoutez les PDF à faire signer (10 Mo max. par fichier)."
+          />
+        } @else {
+          <ul class="list">
+            @for (document of request.documents; track document.id) {
+              <li>
+                <span class="tile"><sts-icon name="file-text" [size]="16" /></span>
+                <span class="strong grow">{{ document.fileName }}</span>
+                <span class="row-actions">
+                  <button
+                    type="button"
+                    class="icon-link"
+                    (click)="openDocument(document.id)"
+                    [attr.aria-label]="'Voir ' + document.fileName"
+                    title="Voir le document"
+                  >
+                    <sts-icon name="eye" [size]="15" />
+                  </button>
+                  @if (request.state === 'SIGNED') {
+                    <button
+                      type="button"
+                      class="icon-link"
+                      (click)="openDocument(document.id, true)"
+                      [attr.aria-label]="'Voir la version signée de ' + document.fileName"
+                      title="Voir la version signée"
+                    >
+                      <sts-icon name="download" [size]="15" />
+                    </button>
+                  }
+                  @if (store.editable()) {
+                    <button
+                      type="button"
+                      class="icon-link danger"
+                      (click)="askRemoveDocument(document.id, document.fileName)"
+                      [attr.aria-label]="'Retirer ' + document.fileName"
+                      title="Retirer"
+                    >
+                      <sts-icon name="trash" [size]="15" />
+                    </button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <!-- Signataires -->
+      <section class="card">
+        <header class="card-head">
+          <h2>
+            Signataires <span class="count">{{ request.signers.length }}</span>
+          </h2>
+          @if (store.editable()) {
+            <button
+              type="button"
+              class="btn-ghost small"
+              (click)="open({ kind: 'signer' })"
+              [disabled]="request.documents.length === 0"
+              [title]="request.documents.length === 0 ? 'Ajoutez d’abord un document' : ''"
+            >
+              <sts-icon name="plus" [size]="15" /> Ajouter
+            </button>
+          }
+        </header>
+        @if (request.signers.length === 0) {
+          <sts-empty-state
+            icon="users"
+            title="Aucun signataire"
+            [hint]="
+              request.documents.length === 0
+                ? 'Ajoutez d’abord un document, puis les personnes qui doivent le signer.'
+                : 'Ajoutez les personnes qui doivent signer.'
+            "
+          />
+        } @else {
+          <ul class="list">
+            @for (signer of request.signers; track signer.id; let index = $index) {
+              <li class="signer">
+                <span class="avatar">{{ initials(signer) }}</span>
+                <div class="signer-meta">
+                  <span class="strong">{{ fullName(signer) }}</span>
+                  <span class="muted contact">
+                    <sts-icon name="mail" [size]="12" /> {{ signer.email }}
+                    @if (signer.phone) {
+                      <sts-icon name="phone" [size]="12" /> {{ signer.phone }}
+                    }
+                  </span>
+                  <div class="fields">
+                    @for (field of signer.fields; track field.id) {
+                      <span class="chip" [class.signed]="field.status !== 'UNSIGNED'">
+                        <strong>{{ field.name }}</strong>
+                        {{ documentNames().get(field.documentId) ?? 'document' }} · p.{{
+                          field.page
+                        }}
+                        @if (store.editable()) {
+                          <button
+                            type="button"
+                            (click)="removeField(field.id)"
+                            [disabled]="store.busy()"
+                            [attr.aria-label]="'Retirer le champ ' + field.name"
+                          >
+                            <sts-icon name="x" [size]="12" />
+                          </button>
+                        }
+                      </span>
+                    } @empty {
+                      <span class="muted">Aucun champ de signature</span>
+                    }
+                    @if (store.editable()) {
+                      <button
+                        type="button"
+                        class="chip add"
+                        (click)="openFieldDialog(signer, index)"
+                      >
+                        <sts-icon name="plus" [size]="12" /> Champ
+                      </button>
+                    }
+                  </div>
+                </div>
+                <sts-signer-status-badge [status]="signer.status" />
+                @if (store.editable()) {
+                  <span class="row-actions">
+                    <button
+                      type="button"
+                      class="icon-link"
+                      (click)="open({ kind: 'signer', signer })"
+                      [attr.aria-label]="'Modifier ' + fullName(signer)"
+                      title="Modifier"
+                    >
+                      <sts-icon name="pencil" [size]="15" />
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-link danger"
+                      (click)="askRemoveSigner(signer)"
+                      [attr.aria-label]="'Retirer ' + fullName(signer)"
+                      title="Retirer"
+                    >
+                      <sts-icon name="trash" [size]="15" />
+                    </button>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <!-- Observateurs -->
+      <section class="card">
+        <header class="card-head">
+          <h2>
+            Observateurs <span class="count">{{ request.followers.length }}</span>
+          </h2>
+          @if (store.editable()) {
+            <button type="button" class="btn-ghost small" (click)="open({ kind: 'follower' })">
+              <sts-icon name="plus" [size]="15" /> Ajouter
+            </button>
+          }
+        </header>
+        @if (request.followers.length === 0) {
+          <sts-empty-state
+            icon="eye"
+            title="Aucun observateur"
+            hint="Les observateurs suivent l'avancement sans signer."
+          />
+        } @else {
+          <ul class="list">
+            @for (follower of request.followers; track follower.id) {
+              <li>
+                <span class="tile"><sts-icon name="user" [size]="16" /></span>
+                <span class="grow">
+                  <span class="strong">{{ follower.email }}</span>
+                  @if (follower.phone) {
+                    <span class="muted"> · {{ follower.phone }}</span>
+                  }
+                </span>
+                @if (store.editable()) {
+                  <span class="row-actions">
+                    <button
+                      type="button"
+                      class="icon-link"
+                      (click)="open({ kind: 'follower', follower })"
+                      [attr.aria-label]="'Modifier ' + follower.email"
+                      title="Modifier"
+                    >
+                      <sts-icon name="pencil" [size]="15" />
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-link danger"
+                      (click)="askRemoveFollower(follower)"
+                      [attr.aria-label]="'Retirer ' + follower.email"
+                      title="Retirer"
+                    >
+                      <sts-icon name="trash" [size]="15" />
+                    </button>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <aside class="card side-col">
+      <header class="card-head"><h2>Informations</h2></header>
+      <dl class="card-body infos">
+        <dt>Identifiant</dt>
+        <dd class="mono">{{ request.id }}</dd>
+        <dt>Validité des liens</dt>
+        <dd>{{ request.linkValidityDays }} jours</dd>
+        <dt>Relances</dt>
+        <dd>{{ request.reminderCount }} envoyée(s) sur {{ request.reminderTimes }}</dd>
+        <dt>Soumise le</dt>
+        <dd>
+          @if (request.submittedAt) {
+            {{ request.submittedAt | date: 'dd/MM/yyyy HH:mm' }}
+            @if (request.submittedBy) {
+              <span class="muted">par {{ request.submittedBy }}</span>
+            }
+          } @else {
+            —
+          }
+        </dd>
+        <dt>Finalisée le</dt>
+        <dd>{{ request.finalizedAt ? (request.finalizedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</dd>
+        <dt>Archivage</dt>
+        <dd>{{ request.archiveStatus === 'ARCHIVED' ? 'Archivée' : 'Non archivée' }}</dd>
+      </dl>
+    </aside>
+  </div>
+
+  @if (dialog(); as current) {
+    @if (current.kind === 'info') {
+      <sts-general-info-dialog
+        [initial]="information()"
+        [firstSetup]="current.firstSetup"
+        [busy]="store.busy()"
+        [error]="dialogError()"
+        (save)="saveInformation($event)"
+        (dismiss)="close()"
+      />
+    } @else if (current.kind === 'preview') {
+      <sts-document-preview-dialog
+        [title]="current.title"
+        [url]="current.url"
+        (dismiss)="close()"
+      />
+    } @else if (current.kind === 'signer') {
+      <sts-signer-dialog
+        [signer]="current.signer"
+        [busy]="store.busy()"
+        [error]="dialogError()"
+        (save)="saveSigner($event, current.signer)"
+        (dismiss)="close()"
+      />
+    } @else if (current.kind === 'field') {
+      <sts-field-dialog
+        [signer]="current.signer"
+        [suggestedTag]="current.suggestedTag"
+        [documents]="request.documents"
+        [busy]="store.busy()"
+        [error]="dialogError()"
+        (save)="saveField($event)"
+        (dismiss)="close()"
+      />
+    } @else if (current.kind === 'follower') {
+      <sts-follower-dialog
+        [follower]="current.follower"
+        [busy]="store.busy()"
+        [error]="dialogError()"
+        (save)="saveFollower($event, current.follower)"
+        (dismiss)="close()"
+      />
+    } @else {
+      <sts-confirm-dialog
+        [title]="current.title"
+        [message]="current.message"
+        [confirmLabel]="current.confirmLabel"
+        [tone]="current.tone"
+        [busy]="store.busy()"
+        [error]="dialogError()"
+        (confirm)="confirm(current)"
+        (dismiss)="close()"
+      />
+    }
+  }
+} @else if (store.notFound()) {
+  <sts-empty-state icon="search" title="Demande introuvable" hint="Elle a peut-être été supprimée.">
+    <a class="btn-ghost" routerLink="/requests"
+      ><sts-icon name="arrow-left" [size]="16" /> Retour à la liste</a
+    >
+  </sts-empty-state>
+} @else if (store.error(); as error) {
+  <div class="table-state" role="alert">
+    <sts-icon name="alert-triangle" [size]="22" />
+    <p>Impossible de charger la demande.</p>
+    <p>{{ error.message }} ({{ error.code }})</p>
+    <button type="button" class="btn-ghost" (click)="store.load(id())">Réessayer</button>
+  </div>
+} @else {
+  <div class="table-state">
+    <sts-icon name="loader" class="spin" [size]="22" />
+    <p>Chargement…</p>
+  </div>
+}

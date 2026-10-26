@@ -1,0 +1,153 @@
+<header class="page-head">
+  <div>
+    <h1>Demandes de signature</h1>
+    <p>Suivez vos demandes et créez-en de nouvelles.</p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="btn-primary" (click)="openCreation()">
+      <sts-icon name="plus" /> Nouvelle demande
+    </button>
+  </div>
+</header>
+
+<form class="filters" [formGroup]="filters">
+  <label class="input-group grow">
+    <span class="sr-only">Rechercher par nom</span>
+    <input formControlName="name" type="search" placeholder="Rechercher par nom…" />
+    <span class="input-group-icon"><sts-icon name="search" [size]="16" /></span>
+  </label>
+
+  <label class="input-group">
+    <span class="sr-only">Statut</span>
+    <select formControlName="state">
+      <option value="">Tous les statuts</option>
+      @for (state of states; track state) {
+        <option [value]="state">{{ stateMeta[state].label }}</option>
+      }
+    </select>
+    <span class="input-group-icon"><sts-icon name="check-circle" [size]="16" /></span>
+  </label>
+
+  <label class="input-group">
+    <span class="sr-only">Créée à partir du</span>
+    <input formControlName="createdFrom" type="date" />
+    <span class="input-group-icon" title="Créée à partir du"
+      ><sts-icon name="calendar" [size]="16"
+    /></span>
+  </label>
+
+  <label class="input-group">
+    <span class="sr-only">Créée jusqu'au</span>
+    <input formControlName="createdTo" type="date" />
+    <span class="input-group-icon" title="Créée jusqu'au"
+      ><sts-icon name="calendar" [size]="16"
+    /></span>
+  </label>
+
+  <button
+    type="button"
+    class="filter-reset"
+    (click)="resetFilters()"
+    [disabled]="!store.hasFilters()"
+    title="Réinitialiser les filtres"
+  >
+    <sts-icon name="rotate-ccw" [size]="16" />
+  </button>
+</form>
+
+<section class="table-card" [class.loading]="store.loading()">
+  @if (store.error(); as error) {
+    <div class="table-state" role="alert">
+      <sts-icon name="alert-triangle" [size]="22" />
+      <p>Impossible de charger les demandes.</p>
+      <p class="code">{{ error.message }} ({{ error.code }})</p>
+      <button type="button" class="btn-ghost" (click)="store.load()">Réessayer</button>
+    </div>
+  } @else if (store.isEmpty()) {
+    @if (store.hasFilters()) {
+      <sts-empty-state
+        icon="search"
+        title="Aucun résultat"
+        hint="Aucune demande ne correspond à ces filtres."
+      >
+        <button type="button" class="btn-ghost" (click)="resetFilters()">
+          Réinitialiser les filtres
+        </button>
+      </sts-empty-state>
+    } @else {
+      <sts-empty-state title="Aucune demande" hint="Créez votre première demande de signature.">
+        <button type="button" class="btn-primary" (click)="openCreation()">
+          <sts-icon name="plus" /> Nouvelle demande
+        </button>
+      </sts-empty-state>
+    }
+  } @else {
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Demande</th>
+            <th>Statut</th>
+            <th>Signataires</th>
+            <th>Documents</th>
+            <th>Créée le</th>
+            <th class="actions"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (request of store.result().items; track request.id) {
+            <tr class="clickable" (click)="open(request)">
+              <td>
+                <span class="strong">{{ request.name || 'Sans nom' }}</span>
+                <span class="sub muted">{{ request.createdBy }}</span>
+              </td>
+              <td><sts-request-state-badge [state]="request.state" /></td>
+              <td>
+                <span class="signers" [title]="signerNames(request)">{{
+                  signerNames(request)
+                }}</span>
+                @if (request.signers.length > 0 && request.state !== 'DRAFT') {
+                  <span class="sub muted">{{ progress(request) }} ont signé</span>
+                }
+              </td>
+              <td>{{ request.documents.length }}</td>
+              <td class="muted">{{ request.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="actions">
+                <button
+                  type="button"
+                  class="icon-link"
+                  (click)="$event.stopPropagation(); open(request)"
+                  [attr.aria-label]="'Ouvrir ' + (request.name || 'la demande')"
+                >
+                  <sts-icon name="eye" [size]="15" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <sts-pagination
+      [page]="store.result().page"
+      [totalPages]="store.result().totalPages"
+      [total]="store.result().totalItems"
+      [pageSize]="store.result().size"
+      (pageChange)="onPage($event)"
+      (pageSizeChange)="onPageSize($event)"
+    />
+  }
+</section>
+
+@if (creationOpen()) {
+  <sts-general-info-dialog
+    title="Nouvelle demande"
+    submitLabel="Créer la demande"
+    [initial]="newRequest"
+    [firstSetup]="true"
+    [busy]="creating()"
+    [error]="creationError()"
+    (save)="create($event)"
+    (dismiss)="closeCreation()"
+  />
+}

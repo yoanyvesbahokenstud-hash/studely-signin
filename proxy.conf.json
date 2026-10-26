@@ -1,0 +1,8 @@
+{
+  "/avi-auth": {
+    "target": "https://dev.api.avi.studely.com",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": { "^/avi-auth": "/auth" }
+  }
+}
