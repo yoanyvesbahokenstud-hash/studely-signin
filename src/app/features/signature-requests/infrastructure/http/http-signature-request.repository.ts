@@ -11,11 +11,13 @@ import {
   GeneralInformation,
   SignatureRequest,
   SignatureRequestSearchCriteria,
+  SignatureSlot,
   SignerInput,
 } from '../../domain/signature-request';
 import { SignatureRequestRepository } from '../../domain/signature-request.repository';
 import {
   GetDocumentFilesResultDto,
+  GetDocumentTagsResultDto,
   InitSignatureRequestResultDto,
   SearchSignatureRequestResultDto,
 } from './signature-request.dto';
@@ -106,6 +108,24 @@ export class HttpSignatureRequestRepository extends SignatureRequestRepository {
       documentId: document.idDocument,
       url: document.downloadUrl,
       signedUrl: document.downloadUrlSignedFile ?? undefined,
+    }));
+  }
+
+  /** `GET /{id}/documents/{documentId}/tags` */
+  async signatureSlots(requestId: string, documentId: string): Promise<SignatureSlot[]> {
+    const response = await firstValueFrom(
+      this.http.get<ApiResponse<GetDocumentTagsResultDto>>(
+        `${this.baseUrl}/${encodeURIComponent(requestId)}/documents/${encodeURIComponent(documentId)}/tags`,
+      ),
+    );
+    return response.data.tags.map((tag) => ({
+      tag: tag.tag,
+      page: tag.pageNumber,
+      x: tag.x,
+      y: tag.y,
+      width: tag.width,
+      height: tag.height,
+      context: tag.context ?? '',
     }));
   }
 

@@ -75,3 +75,17 @@ export interface GetDocumentFilesResultDto {
     downloadUrlSignedFile: string | null;
   }[];
 }
+
+export interface GetDocumentTagsResultDto {
+  idRequest: string;
+  idDocument: string;
+  tags: {
+    tag: string;
+    pageNumber: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    context: string | null;
+  }[];
+}

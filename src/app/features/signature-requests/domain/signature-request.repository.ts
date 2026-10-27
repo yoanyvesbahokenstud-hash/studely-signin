@@ -6,6 +6,7 @@ import {
   GeneralInformation,
   SignatureRequest,
   SignatureRequestSearchCriteria,
+  SignatureSlot,
   SignerInput,
 } from './signature-request';
 
@@ -33,6 +34,8 @@ export abstract class SignatureRequestRepository {
   abstract uploadDocuments(requestId: string, files: File[]): Promise<void>;
   abstract removeDocuments(requestId: string, documentIds: string[]): Promise<void>;
   abstract documentLinks(requestId: string): Promise<DocumentLink[]>;
+  /** Emplacements de signature du document, dans l'ordre des pages. */
+  abstract signatureSlots(requestId: string, documentId: string): Promise<SignatureSlot[]>;
 
   abstract addSigner(requestId: string, signer: SignerInput): Promise<void>;
   abstract editSigner(requestId: string, signerId: string, signer: SignerInput): Promise<void>;

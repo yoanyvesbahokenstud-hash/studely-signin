@@ -1,4 +1,4 @@
-import { SignatureRequest, SignatureRequestState } from './signature-request';
+import { SignatureRequest, SignatureRequestState, Signer } from './signature-request';
 
 /** Règles métier pures : testables sans TestBed, réutilisables par tous les écrans de la feature. */
 
@@ -46,4 +46,15 @@ export function submissionBlockers(request: SignatureRequest): SubmissionBlocker
     blockers.push('DOCUMENT_WITHOUT_FIELD');
   }
   return blockers;
+}
+
+/** Signataire de chaque emplacement déjà attribué d'un document, par tag. */
+export function slotOwners(request: SignatureRequest, documentId: string): Map<string, Signer> {
+  const owners = new Map<string, Signer>();
+  for (const signer of request.signers) {
+    for (const field of signer.fields) {
+      if (field.documentId === documentId) owners.set(field.name, signer);
+    }
+  }
+  return owners;
 }

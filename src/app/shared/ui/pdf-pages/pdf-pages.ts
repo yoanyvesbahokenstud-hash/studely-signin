@@ -13,14 +13,12 @@ import {
 } from '@angular/core';
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
 import { Icon } from '../icon/icon';
+import { loadPdfjs } from './pdfjs';
 
 export interface PdfSource {
   title: string;
   url: string;
 }
-
-/** Copié depuis `node_modules/pdfjs-dist/build` par `angular.json` (assets). */
-const WORKER_PATH = 'pdfjs/pdf.worker.min.mjs';
 
 /**
  * Affiche des PDF à la suite, page par page (pdf.js), à la largeur du conteneur.
@@ -99,8 +97,7 @@ export class PdfPages {
     host.replaceChildren();
     this.loading.set(true);
     try {
-      const pdfjs = await import('pdfjs-dist');
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL(WORKER_PATH, document.baseURI).href;
+      const pdfjs = await loadPdfjs();
       const width = host.clientWidth || 800;
       const ratio = window.devicePixelRatio || 1;
 

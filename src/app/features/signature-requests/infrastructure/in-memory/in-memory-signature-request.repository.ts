@@ -8,6 +8,7 @@ import {
   GeneralInformation,
   SignatureRequest,
   SignatureRequestSearchCriteria,
+  SignatureSlot,
   Signer,
   SignerInput,
 } from '../../domain/signature-request';
@@ -18,7 +19,13 @@ import {
   submissionBlockers,
 } from '../../domain/signature-request.rules';
 import { SIGNATURE_REQUEST_FIXTURES } from './signature-request.fixtures';
-import { mockPdf } from '@core/mocks/mock-pdf';
+import { mockPdf, mockSignatureSlots } from '@core/mocks/mock-pdf';
+
+/** Pages et emplacements des PDF simulés (les fichiers téléversés en mode mock n'ont pas de tag). */
+const MOCK_PAGES = 3;
+const MOCK_SLOTS = 2;
+const FIELD_WIDTH = 100;
+const FIELD_HEIGHT = 50;
 
 /** Codes `SigningError` du backend reproduits par l'adaptateur. */
 const ERRORS = {
@@ -52,6 +59,7 @@ const ERRORS = {
     'SignatureRequest: every document must have at least one signature field',
   ],
   requestNotFound: ['400_460', 'SignatureRequest: signature request not found'],
+  noTag: ['400_445', 'ExtractTags: tag name not found in the PDF'],
   alreadyArchived: [
     '400_406',
     'SignatureRequest: cannot archive a signature request that is already archived',
@@ -167,7 +175,8 @@ export class InMemorySignatureRequestRepository extends SignatureRequestReposito
     return request.documents.map((document) => {
       const file = this.files.get(document.id);
       // Les navigateurs bloquent l'ouverture d'une URL data: : on passe par une URL blob.
-      const content = file ?? mockPdf(document.fileName.replace(/\.pdf$/i, ''));
+      const content =
+        file ?? mockPdf(document.fileName.replace(/\.pdf$/i, ''), MOCK_PAGES, MOCK_SLOTS);
       const url = URL.createObjectURL(content);
       return {
         documentId: document.id,
@@ -175,6 +184,21 @@ export class InMemorySignatureRequestRepository extends SignatureRequestReposito
         signedUrl: request.state === 'SIGNED' ? url : undefined,
       };
     });
+  }
+
+  async signatureSlots(requestId: string, documentId: string): Promise<SignatureSlot[]> {
+    const request = this.find(requestId);
+    if (!request.documents.some((document) => document.id === documentId)) fail('documentNotFound');
+    if (this.files.has(documentId)) fail('noTag');
+    return mockSignatureSlots(MOCK_PAGES, MOCK_SLOTS).map((slot) => ({
+      tag: slot.tag,
+      page: slot.page,
+      x: slot.x,
+      y: slot.y,
+      width: FIELD_WIDTH,
+      height: FIELD_HEIGHT,
+      context: slot.context,
+    }));
   }
 
   async addSigner(requestId: string, input: SignerInput): Promise<void> {

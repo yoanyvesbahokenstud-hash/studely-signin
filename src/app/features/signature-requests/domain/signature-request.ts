@@ -110,6 +110,22 @@ export interface FieldInput {
   tag: string;
 }
 
+/**
+ * Emplacement de signature trouvé dans un PDF : un tag `{{sN}}`, invisible dans le document.
+ * Le rectangle est celui où la signature sera dessinée (points PDF, origine en bas à gauche).
+ */
+export interface SignatureSlot {
+  /** Tag à transmettre pour poser un champ (`s1`, `s2`…). */
+  tag: string;
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Texte écrit autour (« Lu et approuvé, le locataire »), vide s'il n'y a rien. */
+  context: string;
+}
+
 /** Liens présignés de téléchargement, valables 15 minutes. */
 export interface DocumentLink {
   documentId: string;
