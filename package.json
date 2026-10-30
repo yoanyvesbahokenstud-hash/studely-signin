@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build --define \"NG_APP_API_BASE_URL='$API_BASE_URL'\" --define \"NG_APP_AUTH_BASE_URL='$AUTH_BASE_URL'\"",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
