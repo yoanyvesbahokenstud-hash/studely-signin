@@ -8,79 +8,140 @@
       />
 
       <h1>Connexion</h1>
-      <p class="subtitle">Accédez au back-office de signature électronique.</p>
+      @if (challenge(); as current) {
+        <p class="subtitle">
+          Saisissez le code à 6 chiffres envoyé à
+          <strong>{{ current.destination || form.controls.email.value }}</strong
+          >.
+        </p>
+      } @else {
+        <p class="subtitle">Accédez au back-office de signature électronique.</p>
+      }
 
       @if (errorMessage(); as message) {
         <div class="callout danger" role="alert">
           <sts-icon name="alert-triangle" />
           <p>{{ message }}</p>
         </div>
-      } @else if (returnUrl()) {
+      } @else if (infoMessage(); as message) {
+        <div class="callout" role="status">
+          <sts-icon name="info" />
+          <p>{{ message }}</p>
+        </div>
+      } @else if (returnUrl() && !challenge()) {
         <div class="callout" role="status">
           <sts-icon name="info" />
           <p>Connectez-vous pour continuer.</p>
         </div>
       }
 
-      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <div class="field">
-          <label for="email">E-mail</label>
-          <div
-            class="input-wrap"
-            [class.invalid]="form.controls.email.touched && form.controls.email.invalid"
-          >
-            <sts-icon name="mail" />
-            <input
-              id="email"
-              type="email"
-              formControlName="email"
-              autocomplete="username"
-              placeholder="prenom.nom@studely.com"
-            />
-          </div>
-          @if (form.controls.email.touched && form.controls.email.invalid) {
-            <span class="error-text">Saisissez une adresse e-mail valide.</span>
-          }
-        </div>
-
-        <div class="field">
-          <label for="password">Mot de passe</label>
-          <div
-            class="input-wrap"
-            [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
-          >
-            <sts-icon name="lock" />
-            <input
-              id="password"
-              [type]="showPassword() ? 'text' : 'password'"
-              formControlName="password"
-              autocomplete="current-password"
-              placeholder="••••••••"
-            />
-            <button
-              type="button"
-              class="eye"
-              (click)="togglePassword()"
-              [attr.aria-label]="
-                showPassword() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
-              "
+      @if (challenge()) {
+        <form [formGroup]="codeForm" (ngSubmit)="submitCode()" novalidate>
+          <div class="field">
+            <label for="code">Code de vérification</label>
+            <div
+              class="input-wrap"
+              [class.invalid]="codeForm.controls.code.touched && codeForm.controls.code.invalid"
             >
-              <sts-icon [name]="showPassword() ? 'eye-off' : 'eye'" />
-            </button>
+              <sts-icon name="mail" />
+              <input
+                id="code"
+                type="text"
+                formControlName="code"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="000000"
+              />
+            </div>
+            @if (codeForm.controls.code.touched && codeForm.controls.code.invalid) {
+              <span class="error-text">Saisissez le code à 6 chiffres reçu par e-mail.</span>
+            }
           </div>
-          @if (form.controls.password.touched && form.controls.password.invalid) {
-            <span class="error-text">Saisissez votre mot de passe.</span>
-          }
-        </div>
 
-        <button type="submit" class="btn-primary block" [disabled]="loading()">
-          @if (loading()) {
-            <sts-icon name="loader" class="spin" /> Connexion…
-          } @else {
-            Se connecter
-          }
-        </button>
-      </form>
+          <button type="submit" class="btn-primary block" [disabled]="loading()">
+            @if (loading()) {
+              <sts-icon name="loader" class="spin" /> Vérification…
+            } @else {
+              Valider le code
+            }
+          </button>
+        </form>
+
+        <div class="code-actions">
+          <button
+            type="button"
+            class="btn-ghost"
+            (click)="backToCredentials()"
+            [disabled]="loading()"
+          >
+            <sts-icon name="arrow-left" /> Modifier l'e-mail
+          </button>
+          <button type="button" class="btn-ghost" (click)="resendCode()" [disabled]="loading()">
+            <sts-icon name="rotate-ccw" /> Renvoyer le code
+          </button>
+        </div>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label for="email">E-mail</label>
+            <div
+              class="input-wrap"
+              [class.invalid]="form.controls.email.touched && form.controls.email.invalid"
+            >
+              <sts-icon name="mail" />
+              <input
+                id="email"
+                type="email"
+                formControlName="email"
+                autocomplete="username"
+                placeholder="prenom.nom@studely.com"
+              />
+            </div>
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <span class="error-text">Saisissez une adresse e-mail valide.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="password">Mot de passe</label>
+            <div
+              class="input-wrap"
+              [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
+            >
+              <sts-icon name="lock" />
+              <input
+                id="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="password"
+                autocomplete="current-password"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                class="eye"
+                (click)="togglePassword()"
+                [attr.aria-label]="
+                  showPassword() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+                "
+              >
+                <sts-icon [name]="showPassword() ? 'eye-off' : 'eye'" />
+              </button>
+            </div>
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <span class="error-text">Saisissez votre mot de passe.</span>
+            }
+          </div>
+
+          <button type="submit" class="btn-primary block" [disabled]="loading()">
+            @if (loading()) {
+              <sts-icon name="loader" class="spin" /> Connexion…
+            } @else {
+              Se connecter
+            }
+          </button>
+        </form>
+      }
 
       <p class="footnote">Utilisez vos identifiants Studely.</p>
     </section>

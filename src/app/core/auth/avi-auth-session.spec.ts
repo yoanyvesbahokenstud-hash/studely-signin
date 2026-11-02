@@ -26,8 +26,23 @@ describe('AviAuthSession', () => {
 
   afterEach(() => TestBed.inject(HttpTestingController).verify());
 
-  function answerSignIn(body: object): void {
-    TestBed.inject(HttpTestingController).expectOne('/auth/account/signIn').flush(body);
+  const challenge = {
+    challenge_name: 'EMAIL_OTP',
+    session: 'cognito-session',
+    challenge_parameters: {
+      USER_ID_FOR_SRP: 'user-1',
+      CODE_DELIVERY_DESTINATION: 'a***@studely.com',
+    },
+  };
+
+  /** Ouvre une session : signIn (challenge OTP) puis confirmSignIn, qui répond `confirmBody`. */
+  async function signInWithCode(session: AviAuthSession, confirmBody: object): Promise<void> {
+    const http = TestBed.inject(HttpTestingController);
+    const started = session.signIn('admin@studely.com', 'secret');
+    http.expectOne('/auth/account/signIn').flush(challenge);
+    const pending = session.confirmSignIn(await started, '123456');
+    http.expectOne('/auth/account/confirmSignIn').flush(confirmBody);
+    await pending;
   }
 
   it('opens a session with the id_token of a back-office user', async () => {
@@ -38,9 +53,7 @@ describe('AviAuthSession', () => {
       exp: inOneHour(),
     });
 
-    const signIn = session.signIn('admin@studely.com', 'secret');
-    answerSignIn({ authentication_result: { id_token: token } });
-    await signIn;
+    await signInWithCode(session, { authentication_result: { id_token: token } });
 
     expect(session.isAuthenticated()).toBe(true);
     expect(session.user()?.email).toBe('admin@studely.com');
@@ -51,20 +64,55 @@ describe('AviAuthSession', () => {
     const session = TestBed.inject(AviAuthSession);
     const token = fakeIdToken({ 'custom:authorities': 'ROLE_STUDENT', exp: inOneHour() });
 
-    const signIn = session.signIn('student@studely.com', 'secret');
-    answerSignIn({ authentication_result: { id_token: token } });
-
-    await expect(signIn).rejects.toMatchObject({ code: 'MISSING_BACK_OFFICE_ROLE' });
+    await expect(
+      signInWithCode(session, { authentication_result: { id_token: token } }),
+    ).rejects.toMatchObject({ code: 'MISSING_BACK_OFFICE_ROLE' });
     expect(session.isAuthenticated()).toBe(false);
   });
 
-  it('refuses an answer without id_token (e.g. a Cognito challenge)', async () => {
+  it('sends the OTP challenge back with the code', async () => {
+    const session = TestBed.inject(AviAuthSession);
+    const http = TestBed.inject(HttpTestingController);
+
+    const started = session.signIn('admin@studely.com', 'secret');
+    const signInRequest = http.expectOne('/auth/account/signIn');
+    expect(signInRequest.request.body).toMatchObject({
+      email: 'admin@studely.com',
+      password: 'secret',
+    });
+    signInRequest.flush(challenge);
+    const issued = await started;
+
+    expect(issued.destination).toBe('a***@studely.com');
+    expect(session.isAuthenticated()).toBe(false);
+
+    void session.confirmSignIn(issued, '123456').catch(() => undefined);
+    const confirm = http.expectOne('/auth/account/confirmSignIn');
+    expect(confirm.request.body).toEqual({
+      user_id: 'user-1',
+      session_id: 'cognito-session',
+      challenge_name: 'EMAIL_OTP',
+      code: '123456',
+    });
+    confirm.flush({});
+  });
+
+  it('refuses a sign-in answer without challenge', async () => {
     const session = TestBed.inject(AviAuthSession);
 
     const signIn = session.signIn('admin@studely.com', 'secret');
-    answerSignIn({ challenge_name: 'NEW_PASSWORD_REQUIRED' });
+    TestBed.inject(HttpTestingController).expectOne('/auth/account/signIn').flush({});
 
     await expect(signIn).rejects.toBeInstanceOf(AppError);
+  });
+
+  it('refuses a confirmation answer without id_token', async () => {
+    const session = TestBed.inject(AviAuthSession);
+
+    await expect(signInWithCode(session, { authentication_result: {} })).rejects.toBeInstanceOf(
+      AppError,
+    );
+    expect(session.isAuthenticated()).toBe(false);
   });
 
   it('restores a valid session from the tab storage, and drops an expired one', () => {
@@ -102,9 +150,7 @@ describe('AviAuthSession', () => {
         'custom:authorities': 'ROLE_GATEKEEPER_ADMIN',
         exp: Math.floor(Date.now() / 1000) + 60,
       });
-      const signIn = session.signIn('admin@studely.com', 'secret');
-      answerSignIn({ authentication_result: { id_token: token } });
-      await signIn;
+      await signInWithCode(session, { authentication_result: { id_token: token } });
 
       vi.advanceTimersByTime(61_000);
 
