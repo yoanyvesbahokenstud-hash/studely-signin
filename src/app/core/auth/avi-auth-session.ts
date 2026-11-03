@@ -1,6 +1,6 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { AppError } from '@shared/domain/app-error';
-import { AuthSession } from './auth-session';
+import { AuthSession, SignInChallenge } from './auth-session';
 import { canUseBackOffice, MISSING_ROLE_ERROR_CODE } from './auth-user';
 import { AviAuthClient } from './avi-auth-client';
 import { TokenSession } from './token-session';
@@ -19,8 +19,12 @@ export class AviAuthSession extends AuthSession {
     inject(DestroyRef).onDestroy(() => this.session.dispose());
   }
 
-  async signIn(email: string, password: string): Promise<void> {
-    const { token, user } = await this.client.signIn(email, password);
+  signIn(email: string, password: string): Promise<SignInChallenge> {
+    return this.client.signIn(email, password);
+  }
+
+  async confirmSignIn(challenge: SignInChallenge, code: string): Promise<void> {
+    const { token, user } = await this.client.confirmSignIn(challenge, code);
     if (!canUseBackOffice(user)) {
       throw new AppError(403, MISSING_ROLE_ERROR_CODE, "Ce compte n'a pas accès au back-office");
     }
